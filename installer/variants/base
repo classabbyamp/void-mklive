@@ -1,0 +1,3 @@
+VAR_BASE=
+VAR_PKGS=()
+VAR_SERVICES=(dhcpcd wpa_supplicant acpid)

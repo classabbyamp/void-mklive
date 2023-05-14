@@ -1,0 +1,3 @@
+VAR_BASE=xorg
+VAR_PKGS=(gnome firefox)
+VAR_SERVICES=(dbus elogind gdm NetworkManager polkitd)

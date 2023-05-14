@@ -1,0 +1,3 @@
+VAR_BASE=xorg
+VAR_PKGS=(lxde lightdm lightdm-gtk3-greeter gvfs-afc gvfs-mtp gvfs-smb udisks2 firefox)
+VAR_SERVICES=(acpid dbus dhcpcd wpa_supplicant lightdm polkitd)

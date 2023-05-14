@@ -1,0 +1,3 @@
+VAR_BASE=xorg
+VAR_PKGS=(lightdm lightdm-gtk3-greeter cinnamon gnome-keyring colord gnome-terminal gvfs-afc gvfs-mtp gvfs-smb udisks2 firefox)
+VAR_SERVICES=(dbus elogind lightdm NetworkManager polkitd)

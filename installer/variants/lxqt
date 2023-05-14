@@ -1,0 +1,3 @@
+VAR_BASE=xorg
+VAR_PKGS=(lxqt sddm gvfs-afc gvfs-mtp gvfs-smb udisks2 firefox)
+VAR_SERVICES=(elogind dbus dhcpcd wpa_supplicant sddm polkitd)

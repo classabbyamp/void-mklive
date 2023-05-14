@@ -1,0 +1,3 @@
+VAR_BASE=xorg
+VAR_PKGS=(kde5 konsole firefox dolphin)
+VAR_SERVICES=(dbus elogind NetworkManager sddm)
