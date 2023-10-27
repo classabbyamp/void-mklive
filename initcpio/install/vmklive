@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# TODO: need to port dmsquash-live (see also archiso?)
+
+build() {
+	add_runscript
+}

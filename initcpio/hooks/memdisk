@@ -1,0 +1,10 @@
+#!/usr/bin/ash
+
+run_earlyhook() {
+	local memdisk="$(memdiskfind)"
+	if [ -n "$memdisk" ]; then
+		modprobe phram phram=memdisk,"$memdisk"
+		modprobe mtdblock
+		echo 'KERNEL=="mtdblock0", RUN+="/sbin/initqueue --settled --onetime --unique /sbin/dmsquash-live-root /dev/mtdblock0"' >> /etc/udev/rules.d/99-live-squash.rules
+	fi
+}

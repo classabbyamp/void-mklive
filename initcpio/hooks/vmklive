@@ -1,0 +1,140 @@
+#!/usr/bin/ash
+
+parse_live_cmdline_item() {
+	local key="$1" value="$2"
+
+	case "$key" in
+		live.*)
+			# supported by busybox ash
+			# shellcheck disable=SC3060
+			eval "${key//./_}"='${value:-y}'
+	esac
+}
+
+enable_sv() {
+	local srv="$1"
+	[ -d "/new_root/etc/sv/$srv" ] && ln -sf "/etc/sv/$srv" /new_root/etc/runit/runsvdir/current/
+}
+
+set_hostname() {
+	echo void-live > /new_root/etc/hostname
+}
+
+user_setup() {
+	if ! grep -q "$live_shell" /new_root/etc/shells ; then
+		echo "$live_shell" >> /new_root/etc/shells
+	fi
+
+	# create user
+	chroot /new_root useradd -m -c "$live_user" -G audio,video,wheel -s "$live_shell" "$live_user"
+	chroot /new_root passwd -d "$live_user" >/dev/null 2>&1
+
+	# set root/user password
+	chroot /new_root sh -c "echo 'root:voidlinux' | chpasswd -c SHA512"
+	chroot /new_root sh -c "echo '$live_user:voidlinux' | chpasswd -c SHA512"
+
+	# setup sudo permissions
+	if [ -f /new_root/etc/sudoers ]; then
+		echo "$live_user ALL=(ALL:ALL) NOPASSWD: ALL" > /new_root/etc/sudoers.d/99-void-live
+	fi
+
+	# if polkit is installed, allow the wheel group to run anything
+	if [ -d /new_root/etc/polkit-1 ]; then
+		cat <<-EOF > /new_root/etc/polkit-1/rules.d/void-live.rules
+		polkit.addAdminRule(function(action, subject) {
+			return ["unix-group:wheel"];
+		});
+
+		polkit.addRule(function(action, subject) {
+			if (subject.isInGroup("wheel")) {
+				return polkit.Result.YES;
+			}
+		});
+		EOF
+		chroot /new_root chown polkitd:polkitd /etc/polkit-1/rules.d/void-live.rules
+	fi
+}
+
+autologin_setup() {
+	[ -z "$live_autologin" ] && return
+
+	# agetty
+	sed -i "s,GETTY_ARGS=\"--noclear\",GETTY_ARGS=\"--noclear -a $live_user\",g" /new_root/etc/sv/agetty-tty1/conf
+
+	# gdm
+	if [ -d /new_root/etc/gdm ]; then
+		cat <<-EOF > /new_root/etc/gdm/void-live.conf
+		[daemon]
+		AutomaticLoginEnable=true
+		AutomaticLogin=$live_user
+		EOF
+	fi
+
+	# sddm
+	if [ -x /new_root/usr/bin/sddm ]; then
+		cat <<-EOF > /new_root/etc/sddm.conf
+		[Autologin]
+		User=$live_user
+		Session=plasma.desktop
+		EOF
+	fi
+
+	# lightdm
+	if [ -r /new_root/etc/lightdm/lightdm.conf ]; then
+		cat <<-EOF > /new_root/etc/lightdm/lightdm.conf
+		[Seat:*]
+		autologin-user=$live_user
+		autologin-user-timeout=0
+		autologin-session=$(cat /new_root/etc/lightdm/.session)
+		EOF
+	fi
+}
+
+getty_serial() {
+	case "$console" in
+	*ttyS0*) enable_sv agetty-ttyS0 ;;
+	*hvc0*)  enable_sv agetty-hvc0  ;;
+	*hvsi0*) enable_sv agetty-hvsi0 ;;
+	esac
+}
+
+set_locale() {
+	cat <<-EOF > /new_root/etc/locale.conf
+	LANG=$live_keymap
+	LC_COLLATE=C
+	EOF
+}
+
+set_keymap() {
+	echo "KEYMAP=$live_keymap" >> /new_root/etc/rc.conf
+}
+
+setup_accessibility() {
+	[ -z "$live_accessibility" ] && return
+	enable_sv espeakup
+	enable_sv brltty
+}
+
+run_latehook() {
+	parse_cmdline parse_live_cmdline_item
+
+	# set defaults
+	if [ -z "$live_shell" ]; then
+		if [ -x /new_root/bin/bash ]; then
+			live_shell=/bin/bash
+		else
+			live_shell=/bin/sh
+		fi
+	fi
+	[ -z "$live_user" ] && live_user=anon
+	[ -z "$live_lang" ] && live_lang=en_US.UTF-8
+	[ -z "$live_keymap" ] && live_keymap=us
+
+	set_hostname
+	user_setup
+	autologin_setup
+	getty_serial
+	set_locale
+	set_keymap
+	setup_accessibility
+}

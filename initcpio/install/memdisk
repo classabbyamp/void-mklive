@@ -1,0 +1,13 @@
+#!/bin/bash
+
+build() {
+	if [ -e /usr/bin/memdiskfind ]; then
+		add_binary memdiskfind
+		add_module mtdblock
+		add_module phram
+		add_udev_rule 59-mtd.rules # TODO: proper path
+		add_udev_rule 61-mtd.rules
+
+		add_runscript
+	fi
+}

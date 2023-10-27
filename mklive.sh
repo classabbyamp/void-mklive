@@ -29,7 +29,7 @@ umask 022
 . ./lib.sh
 
 readonly REQUIRED_PKGS="base-files libgcc dash coreutils sed tar gawk syslinux grub-i386-efi grub-x86_64-efi memtest86+ squashfs-tools xorriso"
-readonly INITRAMFS_PKGS="binutils xz device-mapper dhclient dracut-network openresolv"
+readonly INITRAMFS_PKGS="binutils xz device-mapper dhclient mkinitcpio-nfs-utils mkinitcpio-udev mkinitcpio-xbps openresolv"
 readonly PROGNAME=$(basename "$0")
 declare -a INCLUDE_DIRS=()
 
@@ -103,14 +103,10 @@ copy_void_keys() {
     cp keys/*.plist "$1"/var/db/xbps/keys
 }
 
-copy_dracut_files() {
-    mkdir -p "$1"/usr/lib/dracut/modules.d/01vmklive
-    cp dracut/vmklive/* "$1"/usr/lib/dracut/modules.d/01vmklive/
-}
-
-copy_autoinstaller_files() {
-    mkdir -p "$1"/usr/lib/dracut/modules.d/01autoinstaller
-    cp dracut/autoinstaller/* "$1"/usr/lib/dracut/modules.d/01autoinstaller/
+copy_initcpio_files() {
+    mkdir -p "$1"/etc/initcpio/
+    cp initcpio/* "$1"/etc/initcpio/
+    cp data/mkinitcpio.conf "$1"/etc/
 }
 
 install_prereqs() {
@@ -170,14 +166,13 @@ copy_include_directories() {
 generate_initramfs() {
     local _args
 
-    copy_dracut_files "$ROOTFS"
-    copy_autoinstaller_files "$ROOTFS"
-    chroot "$ROOTFS" env -i /usr/bin/dracut -N --"${INITRAMFS_COMPRESSION}" \
-        --add-drivers "ahci" --force-add "vmklive autoinstaller" --omit systemd "/boot/initrd" $KERNELVERSION
+    copy_initcpio_files "$ROOTFS"
+    # TODO: add other hooks
+    chroot "$ROOTFS" env -i /usr/bin/mkinitcpio -z "${INITRAMFS_COMPRESSION}" -k "$KERNELVERSION"
     [ $? -ne 0 ] && die "Failed to generate the initramfs"
 
-    mv "$ROOTFS"/boot/initrd "$BOOT_DIR"
-    cp "$ROOTFS"/boot/vmlinuz-$KERNELVERSION "$BOOT_DIR"/vmlinuz
+    mv "$ROOTFS/boot/initramfs-$KERNELVERSION.img" "$BOOT_DIR"/initrd
+    cp "$ROOTFS/boot/vmlinuz-$KERNELVERSION" "$BOOT_DIR"/vmlinuz
 }
 
 cleanup_rootfs() {
@@ -189,8 +184,8 @@ cleanup_rootfs() {
             xbps-remove -r "$ROOTFS" -Ry ${f} >/dev/null 2>&1
         fi
     done
-    rm -r "$ROOTFS"/usr/lib/dracut/modules.d/01vmklive
-    rm -r "$ROOTFS"/usr/lib/dracut/modules.d/01autoinstaller
+    rm -r "$ROOTFS"/etc/initcpio/
+    rm "$ROOTFS"/etc/mkinitcpio.conf
 }
 
 generate_isolinux_boot() {
