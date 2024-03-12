@@ -74,7 +74,7 @@ build_variant() {
     IMG=void-live-${ARCH}-${DATE}-${variant}.iso
     GRUB_PKGS="grub-i386-efi grub-x86_64-efi"
     A11Y_PKGS="espeakup void-live-audio brltty"
-    PKGS="dialog cryptsetup lvm2 mdadm void-docs-browse xtools-minimal xmirror chrony $A11Y_PKGS $GRUB_PKGS"
+    PKGS="dialog cryptsetup lvm2 mdadm void-docs-browse xtools-minimal xmirror chrony zfs $A11Y_PKGS $GRUB_PKGS"
     XORG_PKGS="xorg-minimal xorg-input-drivers xorg-video-drivers setxkbmap xauth font-misc-misc terminus-font dejavu-fonts-ttf orca"
     SERVICES="sshd chronyd"
 
@@ -140,6 +140,10 @@ EOF
     if [ "$variant" != base ]; then
         setup_pipewire
     fi
+
+    # Create an empty zpool.cache to prevent importing at boot
+    mkdir -p "$INCLUDEDIR/etc/zfs"
+    : > "$INCLUDEDIR/etc/zfs/zpool.cache"
 
     ./mklive.sh -a "$ARCH" -o "$IMG" -p "$PKGS" -S "$SERVICES" -I "$INCLUDEDIR" ${REPO} "$@"
 
