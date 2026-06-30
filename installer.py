@@ -91,7 +91,7 @@ class State:
             match self.arch:
                 case "x86_64" | "i686":
                     return "i386-pc"
-        raise ValueError(f"unknown EFI target: {self.arch} ({self.efi_bits} bits)")
+        raise ValueError(f"unknown target for bootloader: {self.arch} ({self.efi_bits} bits)")
 
 
 @dataclass
